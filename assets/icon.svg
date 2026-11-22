@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#102b46"/><stop offset="1" stop-color="#3f8291"/></linearGradient><linearGradient id="gold" x2="0" y2="1"><stop stop-color="#ffe7a0"/><stop offset="1" stop-color="#d58a35"/></linearGradient></defs>
+<rect width="256" height="256" rx="42" fill="url(#sky)"/>
+<path d="M0 160 42 104 75 145 117 75 165 146 203 98 256 158V256H0Z" fill="#243a40"/>
+<path d="M0 190 256 150V256H0Z" fill="#101d28"/>
+<path d="M116 256 141 158 158 155 184 256Z" fill="#d8d0b4"/>
+<path d="m147 256 7-37 5 0 8 37" fill="#f5d36d"/>
+<path d="M31 166h56v8H31zm139-22h57v8h-57z" fill="#f1c56a" opacity=".8"/>
+<path d="M82 177h93l-10 23H92z" fill="url(#gold)" stroke="#fff0c0" stroke-width="3"/>
+<text x="128" y="45" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="19" fill="#fff">CIDADE</text>
+<text x="128" y="66" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="19" fill="#ffd98a">LIVRE 3D</text>
+</svg>
