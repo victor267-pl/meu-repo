@@ -133,7 +133,7 @@ func _spawn_player_and_car() -> void:
 	player.position = Vector3(0, 1, 4)
 	add_child(player)
 	car = CarScript.new()
-	car.position = Vector3(5, 0.8, 4)
+	car.position = Vector3(5, 0, 4)
 	car.rotation.y = PI / 2
 	add_child(car)
 
