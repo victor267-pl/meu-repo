@@ -35,7 +35,7 @@ jobs:
           Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\templates.zip"
           Expand-Archive -LiteralPath "$env:TEMP\templates.zip" -DestinationPath "$env:TEMP\godot-templates" -Force
           Copy-Item "$env:TEMP\godot-templates\templates\*" $templateDir -Recurse -Force
-          if (!(Test-Path (Join-Path $templateDir "windows_release_x86_64.exe"))) {
+          if (!(Test-Path -LiteralPath (Join-Path $templateDir "windows_release_x86_64.exe"))) {
             Get-ChildItem $templateDir -Recurse | Select-Object FullName
             throw "Windows x86_64 release template was not installed."
           }
@@ -45,34 +45,43 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $godotExe = Join-Path $env:USERPROFILE "godot\Godot_v4.4.1-stable_win64.exe"
-          if (!(Test-Path $godotExe)) { throw "Godot executable not found: $godotExe" }
-          & $godotExe --headless --editor --path . --quit *> godot-import.log
+          if (!(Test-Path -LiteralPath $godotExe -PathType Leaf)) { throw "Godot executable not found: $godotExe" }
+          & $godotExe --headless --editor --path "$PWD" --quit *> godot-import.log
           $code = $LASTEXITCODE
           Get-Content godot-import.log
-          if ($code -ne 0) { exit $code }
+          if ($code -ne 0) { throw "Godot project validation failed with exit code $code." }
 
-      - name: Export portable executable
+      - name: Export and verify Windows executable
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           $godotExe = Join-Path $env:USERPROFILE "godot\Godot_v4.4.1-stable_win64.exe"
-          if (!(Test-Path $godotExe)) { throw "Godot executable not found: $godotExe" }
-          New-Item -ItemType Directory -Force -Path build | Out-Null
-          & $godotExe --headless --verbose --path . --export-release "Windows Desktop" "build/CidadeLivre3D.exe" *> export.log
+          $outputDir = Join-Path $PWD "build"
+          $outputExe = Join-Path $outputDir "CidadeLivre3D.exe"
+          New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+          Remove-Item -LiteralPath $outputExe -Force -ErrorAction SilentlyContinue
+
+          & $godotExe --headless --verbose --path "$PWD" --export-release "Windows Desktop" "$outputExe" *> export.log
           $code = $LASTEXITCODE
           Get-Content export.log
-          if ($code -ne 0) { exit $code }
-          if (!(Test-Path "build/CidadeLivre3D.exe")) { throw "Godot did not create build/CidadeLivre3D.exe. See export.log." }
+          if ($code -ne 0) { throw "Godot export failed with exit code $code." }
 
-      - name: Package portable game
-        shell: pwsh
-        run: |
-          Compress-Archive -Path "build/CidadeLivre3D.exe" -DestinationPath "CidadeLivre3D-Windows-Portable.zip" -Force
+          if (!(Test-Path -LiteralPath $outputExe -PathType Leaf)) {
+            Write-Host "Contents of build directory:"
+            Get-ChildItem -LiteralPath $outputDir -Force -Recurse | Select-Object FullName, Length
+            Write-Host "Possible exported executables:"
+            Get-ChildItem -LiteralPath $PWD -Filter "*.exe" -File -Recurse | Select-Object FullName, Length
+            throw "Export command returned success, but CidadeLivre3D.exe was not found at: $outputExe"
+          }
 
-      - name: Upload game package
+          $file = Get-Item -LiteralPath $outputExe
+          if ($file.Length -le 0) { throw "The exported executable is empty." }
+          Write-Host "Verified executable: $($file.FullName) ($($file.Length) bytes)"
+
+      - name: Upload Windows executable
         uses: actions/upload-artifact@v4
         with:
           name: CidadeLivre3D-Windows-Portable
-          path: CidadeLivre3D-Windows-Portable.zip
+          path: build/CidadeLivre3D.exe
           if-no-files-found: error
           retention-days: 30
