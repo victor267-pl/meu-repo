@@ -1,0 +1,52 @@
+name: Build Windows Portable
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  export-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.4.1
+          use-dotnet: false
+
+      - name: Install export templates
+        shell: pwsh
+        run: |
+          godot --headless --editor --path . --quit
+          $templateVersion = "4.4.1.stable"
+          $templateDir = Join-Path $env:APPDATA "Godot\export_templates\$templateVersion"
+          New-Item -ItemType Directory -Force -Path $templateDir | Out-Null
+          $url = "https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz"
+          Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\templates.tpz"
+          Expand-Archive -Path "$env:TEMP\templates.tpz" -DestinationPath "$env:TEMP\godot-templates" -Force
+          Copy-Item "$env:TEMP\godot-templates\templates\*" $templateDir -Recurse -Force
+
+      - name: Export portable executable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          godot --headless --path . --export-release "Windows Desktop" build/CidadeLivre3D.exe
+          if (!(Test-Path "build/CidadeLivre3D.exe")) { throw "Windows export failed." }
+
+      - name: Package portable game
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "build/CidadeLivre3D.exe" -DestinationPath "CidadeLivre3D-Windows-Portable.zip" -Force
+
+      - name: Upload game package
+        uses: actions/upload-artifact@v4
+        with:
+          name: CidadeLivre3D-Windows-Portable
+          path: CidadeLivre3D-Windows-Portable.zip
+          if-no-files-found: error
+          retention-days: 30
