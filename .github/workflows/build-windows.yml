@@ -8,6 +8,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 jobs:
   export-windows:
     runs-on: windows-latest
@@ -24,21 +27,36 @@ jobs:
       - name: Install export templates
         shell: pwsh
         run: |
-          godot --headless --editor --path . --quit
+          $ErrorActionPreference = "Stop"
           $templateVersion = "4.4.1.stable"
           $templateDir = Join-Path $env:APPDATA "Godot\export_templates\$templateVersion"
           New-Item -ItemType Directory -Force -Path $templateDir | Out-Null
           $url = "https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz"
-          Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\templates.tpz"
-          Expand-Archive -Path "$env:TEMP\templates.tpz" -DestinationPath "$env:TEMP\godot-templates" -Force
+          Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\templates.zip"
+          Expand-Archive -LiteralPath "$env:TEMP\templates.zip" -DestinationPath "$env:TEMP\godot-templates" -Force
           Copy-Item "$env:TEMP\godot-templates\templates\*" $templateDir -Recurse -Force
+          if (!(Test-Path (Join-Path $templateDir "windows_release_x86_64.exe"))) {
+            Get-ChildItem $templateDir -Recurse | Select-Object FullName
+            throw "Windows x86_64 release template was not installed."
+          }
+
+      - name: Validate project
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          godot --headless --editor --path . --quit 2>&1 | Tee-Object godot-import.log
+          if ($LASTEXITCODE -ne 0) { Get-Content godot-import.log; exit $LASTEXITCODE }
 
       - name: Export portable executable
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path build | Out-Null
-          godot --headless --path . --export-release "Windows Desktop" build/CidadeLivre3D.exe
-          if (!(Test-Path "build/CidadeLivre3D.exe")) { throw "Windows export failed." }
+          godot --headless --verbose --path . --export-release "Windows Desktop" "build/CidadeLivre3D.exe" 2>&1 | Tee-Object export.log
+          $code = $LASTEXITCODE
+          Get-Content export.log
+          if ($code -ne 0) { exit $code }
+          if (!(Test-Path "build/CidadeLivre3D.exe")) { throw "Godot did not create build/CidadeLivre3D.exe. See export.log." }
 
       - name: Package portable game
         shell: pwsh
