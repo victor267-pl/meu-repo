@@ -44,15 +44,21 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          godot --headless --editor --path . --quit 2>&1 | Tee-Object godot-import.log
-          if ($LASTEXITCODE -ne 0) { Get-Content godot-import.log; exit $LASTEXITCODE }
+          $godotExe = Join-Path $env:USERPROFILE "godot\Godot_v4.4.1-stable_win64.exe"
+          if (!(Test-Path $godotExe)) { throw "Godot executable not found: $godotExe" }
+          & $godotExe --headless --editor --path . --quit *> godot-import.log
+          $code = $LASTEXITCODE
+          Get-Content godot-import.log
+          if ($code -ne 0) { exit $code }
 
       - name: Export portable executable
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          $godotExe = Join-Path $env:USERPROFILE "godot\Godot_v4.4.1-stable_win64.exe"
+          if (!(Test-Path $godotExe)) { throw "Godot executable not found: $godotExe" }
           New-Item -ItemType Directory -Force -Path build | Out-Null
-          godot --headless --verbose --path . --export-release "Windows Desktop" "build/CidadeLivre3D.exe" 2>&1 | Tee-Object export.log
+          & $godotExe --headless --verbose --path . --export-release "Windows Desktop" "build/CidadeLivre3D.exe" *> export.log
           $code = $LASTEXITCODE
           Get-Content export.log
           if ($code -ne 0) { exit $code }
