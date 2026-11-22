@@ -46,10 +46,13 @@ jobs:
           $ErrorActionPreference = "Stop"
           $godotExe = Join-Path $env:USERPROFILE "godot\Godot_v4.4.1-stable_win64.exe"
           if (!(Test-Path -LiteralPath $godotExe -PathType Leaf)) { throw "Godot executable not found: $godotExe" }
-          & $godotExe --headless --editor --path "$PWD" --quit *> godot-import.log
-          $code = $LASTEXITCODE
-          Get-Content godot-import.log
-          if ($code -ne 0) { throw "Godot project validation failed with exit code $code." }
+
+          $stdout = Join-Path $env:TEMP "godot-validate-out.log"
+          $stderr = Join-Path $env:TEMP "godot-validate-err.log"
+          $proc = Start-Process -FilePath $godotExe -ArgumentList @("--headless", "--editor", "--path", "$PWD", "--quit") -Wait -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          if (Test-Path $stdout) { Get-Content $stdout }
+          if (Test-Path $stderr) { Get-Content $stderr }
+          if ($proc.ExitCode -ne 0) { throw "Godot project validation failed with exit code $($proc.ExitCode)." }
 
       - name: Export and verify Windows executable
         shell: pwsh
@@ -61,19 +64,17 @@ jobs:
           New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
           Remove-Item -LiteralPath $outputExe -Force -ErrorAction SilentlyContinue
 
-          & $godotExe --headless --verbose --path "$PWD" --export-release "Windows Desktop" "$outputExe" *> export.log
-          $code = $LASTEXITCODE
-          Get-Content export.log
-          if ($code -ne 0) { throw "Godot export failed with exit code $code." }
+          $stdout = Join-Path $env:TEMP "godot-export-out.log"
+          $stderr = Join-Path $env:TEMP "godot-export-err.log"
+          $proc = Start-Process -FilePath $godotExe -ArgumentList @("--headless", "--verbose", "--path", "$PWD", "--export-release", "Windows Desktop", "$outputExe") -Wait -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          if (Test-Path $stdout) { Get-Content $stdout }
+          if (Test-Path $stderr) { Get-Content $stderr }
+          if ($proc.ExitCode -ne 0) { throw "Godot export failed with exit code $($proc.ExitCode)." }
 
           if (!(Test-Path -LiteralPath $outputExe -PathType Leaf)) {
-            Write-Host "Contents of build directory:"
             Get-ChildItem -LiteralPath $outputDir -Force -Recurse | Select-Object FullName, Length
-            Write-Host "Possible exported executables:"
-            Get-ChildItem -LiteralPath $PWD -Filter "*.exe" -File -Recurse | Select-Object FullName, Length
-            throw "Export command returned success, but CidadeLivre3D.exe was not found at: $outputExe"
+            throw "Godot did not create the expected executable: $outputExe"
           }
-
           $file = Get-Item -LiteralPath $outputExe
           if ($file.Length -le 0) { throw "The exported executable is empty." }
           Write-Host "Verified executable: $($file.FullName) ($($file.Length) bytes)"
