@@ -1,0 +1,22 @@
+; Engine configuration file.
+; Cidade Livre 3D - original open-world action prototype.
+config_version=5
+
+[application]
+config/name="Cidade Livre 3D"
+config/description="Um prototipo 3D de mundo aberto com conducao, exploracao e missoes."
+run/main_scene="res://Main.tscn"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[physics]
+3d/default_gravity=9.8
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+environment/defaults/default_clear_color=Color(0.36, 0.58, 0.78, 1)
